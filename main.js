@@ -7,6 +7,31 @@
   const root = document.documentElement;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+
+  /* menu mobile : un bouton + un panneau plein écran avec tous les liens (sans dépendre de GSAP) */
+  (() => {
+    const bar = $('[data-top]'), navs = $$('[data-nav]');
+    if (!bar || !navs.length || bar.classList.contains('side')) return;
+    const links = navs.flatMap(n => $$('a[href^="#"]', n));
+    const btn = document.createElement('button');
+    btn.className = 'mm-btn'; btn.type = 'button'; btn.setAttribute('aria-label', 'Ouvrir le menu'); btn.setAttribute('aria-expanded', 'false'); btn.setAttribute('aria-controls', 'mm');
+    btn.innerHTML = '<span></span><span></span>';
+    const panel = document.createElement('div');
+    panel.className = 'mm'; panel.id = 'mm'; panel.setAttribute('data-lenis-prevent', ''); panel.setAttribute('aria-hidden', 'true');
+    panel.innerHTML = '<ul>' + links.map((a, i) => '<li style="--i:' + i + '"><a href="' + a.getAttribute('href') + '"><i>' + String(i + 1).padStart(2, '0') + '</i>' + a.textContent.replace(/[→↗]/g, '').trim() + '</a></li>').join('') + '</ul>';
+    bar.classList.add('has-mm'); bar.appendChild(btn); document.body.appendChild(panel);
+    const set = open => {
+      root.classList.toggle('mm-open', open);
+      btn.setAttribute('aria-expanded', open); btn.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+      panel.setAttribute('aria-hidden', !open);
+      if (window.__lenis) open ? window.__lenis.stop() : window.__lenis.start();
+    };
+    btn.addEventListener('click', () => set(!root.classList.contains('mm-open')));
+    panel.addEventListener('click', e => { if (e.target.closest('a')) set(false); }, true);
+    addEventListener('keydown', e => { if (e.key === 'Escape') set(false); });
+    matchMedia('(min-width:901px)').addEventListener('change', e => { if (e.matches) set(false); });
+  })();
+
   /* accordéon : fonctionne même sans animation */
   $$('.acc__h').forEach(b => b.addEventListener('click', () => {
     const a = b.closest('.acc'), open = !a.classList.contains('is-open');
@@ -26,6 +51,7 @@
     const hover = matchMedia('(hover:hover)').matches;
 
     const lenis = new Lenis({ lerp: 0.09 });
+    window.__lenis = lenis;
     lenis.on('scroll', ScrollTrigger.update);
     gsap.ticker.add(t => lenis.raf(t * 1000));
     gsap.ticker.lagSmoothing(0);
@@ -101,6 +127,11 @@
       gsap.to('.hs__bar i', { scaleX: 1, ease: 'none',
         scrollTrigger: { trigger: '#minesafe', start: 'top top', end: () => '+=' + dist(), scrub: true, invalidateOnRefresh: true, refreshPriority: 10 } });
     }
+    /* MineSafe sur téléphone : les visuels s'empilent et se dévoilent un à un */
+    if (!desktop) $$('.hs__f').forEach(f => {
+      gsap.from(f, { y: 70, autoAlpha: 0, duration: 1.1, ease: 'power3.out', scrollTrigger: { trigger: f, start: 'top 90%', once: true } });
+      gsap.from($('img', f), { scale: 1.14, duration: 1.8, ease: 'power3.out', scrollTrigger: { trigger: f, start: 'top 90%', once: true } });
+    });
     /* accueil : portrait en fondu doux et parallaxe */
     gsap.from('.hero__img img', { scale: 1.18, autoAlpha: 0, duration: 2, ease: 'power3.out' });
     gsap.to('.hero__img img', { yPercent: 10, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
@@ -115,7 +146,7 @@
       io.observe(vis);
       setTimeout(reveal, 6000);
     } else reveal();
-    if (desktop) {
+    {
       gsap.fromTo('.prize__card img', { yPercent: -5, scale: 1.08 }, { yPercent: 5, scale: 1.08, ease: 'none', scrollTrigger: { trigger: '.prize__card', start: 'top bottom', end: 'bottom top', scrub: true } });
       gsap.fromTo('.prize__troph img', { yPercent: 6 }, { yPercent: -6, scale: 1.12, ease: 'none', scrollTrigger: { trigger: '.prize__troph', start: 'top bottom', end: 'bottom top', scrub: true } });
     }
